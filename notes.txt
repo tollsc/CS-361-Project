@@ -1,0 +1,5 @@
+Compile microtest:
+g++ microtest.cpp -o microtest -I"C:\vcpkg\installed\x64-windows\include" -L"C:\vcpkg\installed\x64-windows\lib" -lcurl
+
+Compile main program once I integrate microservices (I think):
+g++ typing-test.cpp -o type -I"C:\vcpkg\installed\x64-windows\include" -L"C:\vcpkg\installed\x64-windows\lib" -lcurl

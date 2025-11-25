@@ -120,16 +120,24 @@ void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& i
     col++;
 }
 
-void homeView(std::string prompt) {
+char homeView(std::string prompt) {
     std::cout << "\033[2J\033[H\n";
     std::cout << "Welcome to " << "\033[38;5;202m" << "chartype!\n\n\n";
     std::cout << "\033[0m" << "Press any key to start typing the prompt below:\n";
-    std::cout << "(Or press [1] to open the menu)\n\n\n\n";
+    std::cout << "(Or press [q] to open the menu)\n\n\n\n";
     std::cout << "\033[90m" << prompt;
     std::cout << "\033[10H\033[0m";
+    char home_ch;
+    while(true) {
+        if (_kbhit()) {
+            home_ch = _getch();
+            if (home_ch == 'q') return '3';
+            else return '1';
+        }
+    }
 }
 
-void testView(std::string prompt, int timer, int prompt_length) {
+char testView(std::string prompt, int timer, int prompt_length) {
     std::cout << "\033[2J\033[H\n\n\n\n\n\n\n\n\n";
     std::cout << "\033[90m" << prompt;
     std::cout << "\033[" << 16 << "H" << "\033[90m";
@@ -151,7 +159,9 @@ void testView(std::string prompt, int timer, int prompt_length) {
     while (true) {
         if (_kbhit()) {
             ch = _getch();
-            if (ch == 27) break; // ESC to quit // TODO adjust
+            if (ch == 27) {
+                return '2'; // ESC to quit // TODO adjust
+            }
             else if (ch == '\b') { // backspace
                 backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
             } else { // normal key
@@ -161,6 +171,69 @@ void testView(std::string prompt, int timer, int prompt_length) {
     }
 
     // t.join(); // NOTE: timer
+}
+
+char resultsView() {
+    std::cout << "\033[2J\033[H\n";
+    std::cout << "\n\n\n\n\n\n\n\n";
+    std::cout << "\033[0m" << "wpm: " << "\033[38;5;202m" << "80\n";
+    std::cout << "\033[0m" << "acc: " << "\033[38;5;202m" << "95%\n";
+    std::cout << "\033[0m" << "test time: " << "\033[38;5;202m" << "30s\n";
+    std::cout << "\033[0m" << "difficulty: " << "\033[38;5;202m" << "classic\n\n\n";
+    std::cout << "\033[0m" << "Press [tab] for next test\n"
+                              "Press [q] to retry test\n\n";
+    char results_ch;
+    while(true) {
+        if (_kbhit()) {
+            results_ch = _getch();
+        }
+        if (results_ch == '\t') return '0';
+        if (results_ch == 'q') return '1';
+    }
+}
+
+char menuView() {
+    std::cout << "\033[2J\033[H\n\n\n\n\n";
+    std::cout << "Press [1] to close the menu\n\n";
+    std::cout << "more\n";
+    std::cout << "[w] about\n\n";
+    std::cout << "settings\n";
+    std::cout << "Press [key] for setting --> type new value --> [enter] to apply changes\n";
+    std::cout << "[3] time -- " << "30s : " << "\033[38;5;202m" << "15" << "\033[0m\n";
+    std::cout << "[4] difficulty -- " << "c : " << "\033[38;5;202m" << "e" << "\033[0m\n";
+    std::cout << "\t(c: classic experience. h: hard, fails test if you enter an\n"
+                 "\tincorrect word. e: expert, fails test if you press an incorrect key)\n\n";
+    std::cout << "danger zone\n";
+    std::cout << "[5] reset settings\n";
+    // TODO: Implement reset settings screen/message
+    char menu_ch;
+    while(true) {
+        if (_kbhit()) {
+            menu_ch = _getch();
+        }
+        if (menu_ch == '1') return '0';
+        if (menu_ch == 'w') return '4';
+    }
+}
+
+char aboutView() {
+    std::cout << "\033[2J\033[H\n\n\n\n\n";
+    std::cout << "Press [1] to close the menu\n\n\n";
+    std::cout << "Press [2] to go back\n\n";
+    std::cout << "\033[38;5;202mChartype\033[0m"
+                 " is a CLI typing test inspired by Monkeytype. It provides a\n"
+                 "minimalist typing experience with simplicity and flow. "
+                 "\033[38;5;202mChartype\033[0m offers\n"
+                 "real-time feedback per key pressed, results after each test, and\n"
+                 "customization options for user preference.\n";
+    char about_ch;
+    while(true) {
+        if (_kbhit()) {
+            about_ch = _getch();
+        }
+        if (about_ch == '1') return '0';
+        if (about_ch == '2') return '3';
+    }
 }
 
 int main() {
@@ -173,8 +246,14 @@ int main() {
     std::string promptl1 = "the quick brown fox jumps over the lazy dog\n";
     int prompt_length = promptl1.length();
     int timer = 15;
-    homeView(prompt);
-    std::string test;
-    std::cin >> test;
-    testView(prompt, timer, prompt_length);
+    char menu = '0';
+
+    // TODO GET RID OF FIRST CHAR BEHAVIOR IF TOO HARD
+    while (true) {
+        if (menu == '0') menu = homeView(og_prompt);
+        if (menu == '1') menu = testView(prompt, timer, prompt_length);
+        if (menu == '2') menu = resultsView();
+        if (menu == '3') menu = menuView();
+        if (menu == '4') menu = aboutView();
+    }
 }
