@@ -6,39 +6,15 @@
 #include <chrono>
 // #include <mutex> NOTE: Enable for timer
 
-// TODO: Implement timer later if time allows
-// NOTE: Research mutex behavior for print statements (I believe only during tests):
-    // mtx.lock();
-    // // Print/delete behavior
-    // std::cout.flush();
-    // mtx.unlock();
-
-// std::mutex mtx; NOTE: Enable for timer
-
-// void countdown(int timer) {
-//     for (int i = timer; i > 0; i--) {
-//         mtx.lock();
-//         std::cout << "\033[" << 9 << "H";
-//         std::cout << "\033[0m" << "\r" << i << " ";
-//         std::cout.flush();
-//         mtx.unlock();
-//         std::this_thread::sleep_for(std::chrono::seconds(1));
-//     }
-// }
-
 // TODO: Get other screens working!
 
-// TODO: See if possible to fix the typing prompt’s starting row and track only the horizontal cursor (col),
-// using substr redraws for fast backspace updates. Might fix delay but idk might be bs
-
-
-void backspace_pressed_on_extra(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& row, int& extras, int& prompt_length) {
-    prompt.erase(prompt.begin() + prompt.find('\0'));
+void backspace_pressed_on_extra(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras, int& prompt_length) {
+    prompt.erase(prompt.begin() + (index - 1));
     std::cout << "\b ";
     std::cout << "\033[90m" << prompt.substr(index);
+    // TODO debug: I believe problem lies in prompt_length only working for first row.
     std::cout << "\033[" << row + 1 << ";" << prompt_length + extras - 1 << "H";
     std::cout << "\033[K";
-    std::cout.flush();
     extras--;
 }
 
@@ -53,7 +29,7 @@ void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
     }
     else { // Deletes any char after
         if (prompt[index - 1] == '\0') { // Deletes an extra char
-            backspace_pressed_on_extra(typed, ch, prompt, index, row, extras, prompt_length);
+            backspace_pressed_on_extra(typed, ch, prompt, index, col, row, extras, prompt_length);
         } else { // Deletes normal char
             std::cout << "\033[90m" << prompt.substr(index);
         }
@@ -62,7 +38,6 @@ void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
     index--;
     col--;
     std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H";
-    std::cout.flush();
 }
 
 void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col) {
@@ -120,7 +95,7 @@ void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& i
     col++;
 }
 
-char homeView(std::string prompt) {
+int homeView(std::string prompt, char& first_ch) {
     std::cout << "\033[2J\033[H\n";
     std::cout << "Welcome to " << "\033[38;5;202m" << "chartype!\n\n\n";
     std::cout << "\033[0m" << "Press any key to start typing the prompt below:\n";
@@ -131,20 +106,20 @@ char homeView(std::string prompt) {
     while(true) {
         if (_kbhit()) {
             home_ch = _getch();
-            if (home_ch == 'q') return '3';
-            else return '1';
+            first_ch = home_ch;
+            if (home_ch == 'q') return 3;
+            else return 1;
         }
     }
 }
 
-char testView(std::string prompt, int timer, int prompt_length) {
+int testView(std::string prompt, int prompt_length, char& first_ch) {
     std::cout << "\033[2J\033[H\n\n\n\n\n\n\n\n\n";
     std::cout << "\033[90m" << prompt;
     std::cout << "\033[" << 16 << "H" << "\033[90m";
     std::cout << "Press [tab] for next test\n"
                  "Press [enter] to retry test\n"
                  "Press [/] to hide tip\n";
-    // std::thread t(countdown, timer); NOTE: timer
     std::cout << "\033[10H\033[0m";
 
     std::vector<char> typed;
@@ -156,24 +131,35 @@ char testView(std::string prompt, int timer, int prompt_length) {
 
     std::cout << "\033[" << row + 1 << "H";
 
-    while (true) {
-        if (_kbhit()) {
-            ch = _getch();
-            if (ch == 27) {
-                return '2'; // ESC to quit // TODO adjust
-            }
-            else if (ch == '\b') { // backspace
-                backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
-            } else { // normal key
-                key_pressed(typed, ch, prompt, index, col, row, extras); // TODO check if all lines up
+    while (true) {  // TODO: separate this while loop into two+ different functions
+        if (first_ch != '\0') {
+                ch = first_ch;
+                if (ch == 27) {
+                    return 2; // ESC to quit // TODO adjust
+                }
+                else if (ch == '\b') { // backspace
+                    backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
+                } else { // normal key
+                    key_pressed(typed, ch, prompt, index, col, row, extras); // TODO check if all lines up
+                }
+                first_ch = '\0';
+        } else {
+            if (_kbhit()) {
+                ch = _getch();
+                if (ch == 27) {
+                    return 2; // ESC to quit // TODO adjust
+                }
+                else if (ch == '\b') { // backspace
+                    backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
+                } else { // normal key
+                    key_pressed(typed, ch, prompt, index, col, row, extras); // TODO check if all lines up
+                }
             }
         }
     }
-
-    // t.join(); // NOTE: timer
 }
 
-char resultsView() {
+int resultsView() {
     std::cout << "\033[2J\033[H\n";
     std::cout << "\n\n\n\n\n\n\n\n";
     std::cout << "\033[0m" << "wpm: " << "\033[38;5;202m" << "80\n";
@@ -187,12 +173,12 @@ char resultsView() {
         if (_kbhit()) {
             results_ch = _getch();
         }
-        if (results_ch == '\t') return '0';
-        if (results_ch == 'q') return '1';
+        if (results_ch == '\t') return 0;
+        if (results_ch == 'q') return 1;
     }
 }
 
-char menuView() {
+int menuView() {
     std::cout << "\033[2J\033[H\n\n\n\n\n";
     std::cout << "Press [1] to close the menu\n\n";
     std::cout << "more\n";
@@ -211,12 +197,12 @@ char menuView() {
         if (_kbhit()) {
             menu_ch = _getch();
         }
-        if (menu_ch == '1') return '0';
-        if (menu_ch == 'w') return '4';
+        if (menu_ch == '1') return 0;
+        if (menu_ch == 'w') return 4;
     }
 }
 
-char aboutView() {
+int aboutView() {
     std::cout << "\033[2J\033[H\n\n\n\n\n";
     std::cout << "Press [1] to close the menu\n\n\n";
     std::cout << "Press [2] to go back\n\n";
@@ -231,8 +217,8 @@ char aboutView() {
         if (_kbhit()) {
             about_ch = _getch();
         }
-        if (about_ch == '1') return '0';
-        if (about_ch == '2') return '3';
+        if (about_ch == '1') return 0;
+        if (about_ch == '2') return 3;
     }
 }
 
@@ -245,15 +231,14 @@ int main() {
     std::string og_prompt = prompt;
     std::string promptl1 = "the quick brown fox jumps over the lazy dog\n";
     int prompt_length = promptl1.length();
-    int timer = 15;
-    char menu = '0';
+    int menu = 0;
+    char first_ch = '\0';
 
-    // TODO GET RID OF FIRST CHAR BEHAVIOR IF TOO HARD
     while (true) {
-        if (menu == '0') menu = homeView(og_prompt);
-        if (menu == '1') menu = testView(prompt, timer, prompt_length);
-        if (menu == '2') menu = resultsView();
-        if (menu == '3') menu = menuView();
-        if (menu == '4') menu = aboutView();
+        if (menu == 0) menu = homeView(og_prompt, first_ch);
+        if (menu == 1) menu = testView(prompt, prompt_length, first_ch);
+        if (menu == 2) menu = resultsView();
+        if (menu == 3) menu = menuView();
+        if (menu == 4) menu = aboutView();
     }
 }
