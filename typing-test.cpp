@@ -10,12 +10,14 @@
 
 void backspace_pressed_on_extra(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras, int& prompt_length) {
     prompt.erase(prompt.begin() + (index - 1));
-    std::cout << "\b ";
-    std::cout << "\033[90m" << prompt.substr(index);
-    // TODO debug: I believe problem lies in prompt_length only working for first row.
-    std::cout << "\033[" << row + 1 << ";" << prompt_length + extras - 1 << "H";
+    std::cout << "\b \b ";
+    size_t newline_pos = prompt.find('\n', index);
+    std::cout << "\033[90m" << prompt.substr(index, newline_pos - index);
     std::cout << "\033[K";
+    index--;
+    col--;
     extras--;
+    std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H\033[0m";
 }
 
 void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras, int& prompt_length) {
@@ -26,42 +28,49 @@ void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
 
     if (index < 2) { // Deletes first char
         std::cout << "\b \b";
+        index--;
+        col--;
+        std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H\033[0m";
     }
     else { // Deletes any char after
-        if (prompt[index - 1] == '\0') { // Deletes an extra char
+        if (prompt[index - 1] == '_') { // Deletes an extra char
             backspace_pressed_on_extra(typed, ch, prompt, index, col, row, extras, prompt_length);
         } else { // Deletes normal char
-            std::cout << "\033[90m" << prompt.substr(index);
+            std::cout << "\b \b ";
+            size_t newline_pos = prompt.find('\n', index);
+            std::cout << "\033[90m" << prompt.substr(index, newline_pos - index);
+            std::cout << "\033[K";
+            index--;
+            col--;
+            std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H\033[0m";
         }
     }
-
-    index--;
-    col--;
-    std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H";
 }
 
-void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col) {
-    while(prompt[index] != ' ' && prompt[index] != '\n') {
+void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& prompt_length) {
+    int start = index;
+    while (prompt[index] != ' ' && prompt[index] != '\n') {
         typed.push_back(ch);
-        std::cout << prompt[index];
         index++;
         col++;
     }
+    std::cout << "\033[90m" << prompt.substr(start, index - start) << "\033[0m";
 }
 
-void extra_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras) {
+void extra_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras, int& prompt_length) {
     typed.push_back(ch);
-    std::cout << "\033[38;5;88m" << typed[index];
-    prompt.insert(prompt.begin() + index, '\0');
-    std::cout << "\033[90m" << prompt.substr(index);
+    prompt.insert(prompt.begin() + index, '_');
+    size_t newline_pos = prompt.find('\n', index + 1); // find end of current line
+    std::cout << "\033[38;5;88m" << typed[index]       // show extra char in red
+              << "\033[90m" << prompt.substr(index + 1, newline_pos - (index + 1)) // redraw remainder of line
+              << "\033[K"; // clear to end of line
     index++;
     col++;
     extras++;
-    std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H";
-    return;
+    std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H\033[0m";
 }
 
-void key_pressed_end_line(int& index, int& col, int& row) {
+void key_pressed_end_line(int& index, int& col, int& row, int& prompt_length) {
     std::cout << std::endl;
     index++;
     col = 0;
@@ -69,24 +78,24 @@ void key_pressed_end_line(int& index, int& col, int& row) {
     return;
 }
 
-void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras) {
+void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col, int& row, int& extras, int& prompt_length) {
     std::cout << "\033[0m"; // Default text
 
     // TODO: consider return values/if they need to cotinue (keyword) while loop
     if ((ch == ' ' && index < 1) || (ch == ' ' && typed[index - 1] == ' ')) return; // Space key pressed when it shouldn't have been
     if (ch == ' ') { // Space key pressed
-        space_key_pressed(typed, ch, prompt, index, col);
+        space_key_pressed(typed, ch, prompt, index, col, prompt_length);
         // return; // TODO: Figure out why this works only without return if have time
     }
     if (ch != ' ' && (prompt[index] == ' ' || prompt[index] == '\n')) { // Extra key pressed (should've spaced)
-        extra_key_pressed(typed, ch, prompt, index, col, row, extras);
+        extra_key_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
         return;
     }
 
     typed.push_back(ch); // Push ch to typed
 
     if (typed[index] == ' ' && prompt[index] == '\n') { // Space key pressed end of line
-        key_pressed_end_line(index, col, row);
+        key_pressed_end_line(index, col, row, prompt_length);
         return;
     } else if (typed[index] == prompt[index]) std::cout << "\u001b[0m" << prompt[index]; // Correct key pressed
     else std::cout << "\u001b[31m" << prompt[index]; // Incorrect key pressed
@@ -140,7 +149,7 @@ int testView(std::string prompt, int prompt_length, char& first_ch) {
                 else if (ch == '\b') { // backspace
                     backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
                 } else { // normal key
-                    key_pressed(typed, ch, prompt, index, col, row, extras); // TODO check if all lines up
+                    key_pressed(typed, ch, prompt, index, col, row, extras, prompt_length); // TODO check if all lines up
                 }
                 first_ch = '\0';
         } else {
@@ -152,7 +161,7 @@ int testView(std::string prompt, int prompt_length, char& first_ch) {
                 else if (ch == '\b') { // backspace
                     backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
                 } else { // normal key
-                    key_pressed(typed, ch, prompt, index, col, row, extras); // TODO check if all lines up
+                    key_pressed(typed, ch, prompt, index, col, row, extras, prompt_length); // TODO check if all lines up
                 }
             }
         }
