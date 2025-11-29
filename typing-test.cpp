@@ -137,7 +137,6 @@ void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& i
 
     if (typed[index] == ' ' && prompt[index] == '\n') { // Space key pressed end of line
         key_pressed_end_line(index, col, row, prompt_length);
-        typed_word_count++;
         return;
     } else if (typed[index] == prompt[index]) std::cout << "\u001b[0m" << prompt[index]; // Correct key pressed
     else std::cout << "\u001b[31m" << prompt[index]; // Incorrect key pressed
@@ -164,7 +163,8 @@ int homeView(std::string prompt, char& first_ch) {
     }
 }
 
-int testView(std::vector<char>& typed, std::string& prompt, int prompt_length, char& first_ch, int prompt_word_count) {
+int testView(std::vector<char>& typed, std::string& prompt, int prompt_length,
+        char& first_ch, int prompt_word_count, int& typed_word_count, double& time_passed) {
     std::cout << "\033[2J\033[H\n\n\n\n\n\n\n\n\n";
     std::cout << "\033[90m" << prompt;
     std::cout << "\033[" << 16 << "H" << "\033[90m";
@@ -184,12 +184,20 @@ int testView(std::vector<char>& typed, std::string& prompt, int prompt_length, c
 
     std::cout << "\033[" << row + 1 << "H";
 
+    auto start = std::chrono::steady_clock::now();
+
     while (true) {  // TODO: separate this while loop into two+ different functions
-        int typed_word_count = 0;
-        if (typed_word_count >= prompt_word_count) return 2;
+        if (typed_word_count >= prompt_word_count) {
+            auto end = std::chrono::steady_clock::now();
+            time_passed = std::chrono::duration<double>(end - start).count();
+            return 2;
+            // TODO left off debug here
+        }
         if (first_ch != '\0') {
                 ch = first_ch;
                 if (ch == 27) {
+                    auto end = std::chrono::steady_clock::now();
+                    time_passed = std::chrono::duration<double>(end - start).count();
                     return 2; // ESC to quit // TODO adjust
                 }
                 else if (ch == '\b') { // backspace
@@ -200,10 +208,16 @@ int testView(std::vector<char>& typed, std::string& prompt, int prompt_length, c
                 }
                 first_ch = '\0';
         } else {
-            if (index >= prompt.length()) return 2;
+            if (index >= prompt.length()) {
+                auto end = std::chrono::steady_clock::now();
+                time_passed = std::chrono::duration<double>(end - start).count();
+                return 2;
+            }
             if (_kbhit()) {
                 ch = _getch();
                 if (ch == 27) {
+                    auto end = std::chrono::steady_clock::now();
+                    time_passed = std::chrono::duration<double>(end - start).count();
                     return 2; // ESC to quit // TODO adjust
                 }
                 else if (ch == '\b') { // backspace
@@ -217,8 +231,8 @@ int testView(std::vector<char>& typed, std::string& prompt, int prompt_length, c
     }
 }
 
-int resultsView(std::vector<char>& typed, std::string& prompt) {
-    // Accuracy code and MS #2 Implementation ------------------------------------
+int resultsView(std::vector<char>& typed, std::string& prompt, int prompt_word_count, int& typed_word_count, double& time_passed) {
+       // Accuracy code and MS #2 Implementation ------------------------------------
     int correct = 0;
     int total = (std::min)(typed.size(), prompt.size());
     for (size_t i = 0; i < total; ++i) {
@@ -237,10 +251,20 @@ int resultsView(std::vector<char>& typed, std::string& prompt) {
     // double accuracy = (double)correct / total * 100.0; // Uncomment for local
     // -----------------------------------------------------------------------------
 
+    double time_min = time_passed / 60.0;
+    double wpm_exact = (double)correct / 5.0 / time_min;
+    double raw_exact = (double)total / 5.0 / time_min;
+
+    // Cast to int for display
+    int wpm = static_cast<int>(std::round(wpm_exact));
+    int raw = static_cast<int>(std::round(raw_exact));
+
     std::cout << "\033[2J\033[H\n";
     std::cout << "\n\n\n\n\n\n\n\n";
-    std::cout << "\033[0m" << "wpm: " << "\033[38;5;202m" << "_\n";
+    std::cout << "\033[0m" << "[TEMP] time passed: " << "\033[38;5;202m" << time_passed << "\n"; // TODO delete
+    std::cout << "\033[0m" << "wpm: " << "\033[38;5;202m" << wpm << "\n";
     std::cout << "\033[0m" << "acc: " << "\033[38;5;202m" << accuracy << "%\n";
+    std::cout << "\033[0m" << "raw: " << "\033[38;5;202m" << raw << "\n";
     std::cout << "\033[0m" << "test time: " << "\033[38;5;202m" << "_\n";
     std::cout << "\033[0m" << "difficulty: " << "\033[38;5;202m" << "_\n\n\n";
     std::cout << "\033[0m" << "Press [tab] for next test\n"
@@ -329,15 +353,17 @@ int main() {
     std::string promptl1 = "the quick brown fox jumps over the lazy dog\n";
     int prompt_length = promptl1.length();
     int prompt_word_count = get_word_count(prompt);
+    int typed_word_count = 0;
     int menu = 0;
     char first_ch = '\0';
+    double time_passed = 0;
 
     std::vector<char> typed; // TODO DELETE?
 
     while (true) {
         if (menu == 0) menu = homeView(og_prompt, first_ch);
-        if (menu == 1) menu = testView(typed, prompt, prompt_length, first_ch, prompt_word_count);
-        if (menu == 2) menu = resultsView(typed, prompt);
+        if (menu == 1) menu = testView(typed, prompt, prompt_length, first_ch, prompt_word_count, typed_word_count, time_passed);
+        if (menu == 2) menu = resultsView(typed, prompt, prompt_word_count, typed_word_count, time_passed);
         if (menu == 3) menu = menuView();
         if (menu == 4) menu = aboutView();
     }
