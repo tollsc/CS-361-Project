@@ -44,7 +44,7 @@ json getRequest(const std::string& url) {
 }
 
 void backspace_pressed_on_extra(std::vector<char>& typed, char& ch, std::string& prompt, int& index,
-        int& col, int& row, int& extras, int& prompt_length) {
+        int& col, int& row, int& extras) {
     prompt.erase(prompt.begin() + (index - 1));
     std::cout << "\b \b ";
     size_t newline_pos = prompt.find('\n', index);
@@ -57,7 +57,7 @@ void backspace_pressed_on_extra(std::vector<char>& typed, char& ch, std::string&
 }
 
 void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index,
-        int& col, int& row, int& extras, int& prompt_length) {
+        int& col, int& row, int& extras) {
     if (index < 1) return; // First char typed is backspace
     if (typed[index - 1] == ' ') return; // Tries to backspace a space
 
@@ -71,7 +71,7 @@ void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
     }
     else { // Deletes any char after
         if (prompt[index - 1] == '_') { // Deletes an extra char
-            backspace_pressed_on_extra(typed, ch, prompt, index, col, row, extras, prompt_length);
+            backspace_pressed_on_extra(typed, ch, prompt, index, col, row, extras);
         } else { // Deletes normal char
             std::cout << "\b \b ";
             size_t newline_pos = prompt.find('\n', index);
@@ -84,8 +84,7 @@ void backspace_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
     }
 }
 
-void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index,
-        int& col, int& prompt_length) {
+void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index, int& col) {
     int start = index;
     while (prompt[index] != ' ' && prompt[index] != '\n') {
         typed.push_back(ch);
@@ -96,7 +95,7 @@ void space_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
 }
 
 void extra_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index,
-        int& col, int& row, int& extras, int& prompt_length) {
+        int& col, int& row, int& extras) {
     typed.push_back(ch);
     prompt.insert(prompt.begin() + index, '_');
     size_t newline_pos = prompt.find('\n', index + 1); // find end of current line
@@ -109,7 +108,7 @@ void extra_key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, 
     std::cout << "\033[" << row + 1 << ";" << (col + 1) << "H\033[0m";
 }
 
-void key_pressed_end_line(int& index, int& col, int& row, int& prompt_length) {
+void key_pressed_end_line(int& index, int& col, int& row) {
     std::cout << std::endl;
     index++;
     col = 0;
@@ -118,25 +117,25 @@ void key_pressed_end_line(int& index, int& col, int& row, int& prompt_length) {
 }
 
 void key_pressed(std::vector<char>& typed, char& ch, std::string& prompt, int& index,
-        int& col, int& row, int& extras, int& prompt_length, int& typed_word_count) {
+        int& col, int& row, int& extras, int& typed_word_count) {
     std::cout << "\033[0m"; // Default text
 
     // TODO: consider return values/if they need to cotinue (keyword) while loop
     if ((ch == ' ' && index < 1) || (ch == ' ' && typed[index - 1] == ' ')) return; // Space key pressed when it shouldn't have been
     if (ch == ' ') { // Space key pressed
-        space_key_pressed(typed, ch, prompt, index, col, prompt_length);
+        space_key_pressed(typed, ch, prompt, index, col);
         typed_word_count++;
         // return; // TODO: Figure out why this works only without return if have time
     }
     if (ch != ' ' && (prompt[index] == ' ' || prompt[index] == '\n')) { // Extra key pressed (should've spaced)
-        extra_key_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
+        extra_key_pressed(typed, ch, prompt, index, col, row, extras);
         return;
     }
 
     typed.push_back(ch); // Push ch to typed
 
     if (typed[index] == ' ' && prompt[index] == '\n') { // Space key pressed end of line
-        key_pressed_end_line(index, col, row, prompt_length);
+        key_pressed_end_line(index, col, row);
         return;
     } else if (typed[index] == prompt[index]) std::cout << "\u001b[0m" << prompt[index]; // Correct key pressed
     else std::cout << "\u001b[31m" << prompt[index]; // Incorrect key pressed
@@ -163,7 +162,7 @@ int homeView(std::string prompt, char& first_ch) {
     }
 }
 
-int testView(std::vector<char>& typed, std::string& prompt, int prompt_length,
+int testView(std::vector<char>& typed, std::string& prompt,
         char& first_ch, int prompt_word_count, int& typed_word_count, double& time_passed) {
     std::cout << "\033[2J\033[H\n\n\n\n\n\n\n\n\n";
     std::cout << "\033[90m" << prompt;
@@ -201,10 +200,9 @@ int testView(std::vector<char>& typed, std::string& prompt, int prompt_length,
                     return 2; // ESC to quit // TODO adjust
                 }
                 else if (ch == '\b') { // backspace
-                    backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
+                    backspace_pressed(typed, ch, prompt, index, col, row, extras);
                 } else { // normal key
-                    key_pressed(typed, ch, prompt, index, col, row, extras,
-                        prompt_length, typed_word_count); // TODO check if all lines up
+                    key_pressed(typed, ch, prompt, index, col, row, extras, typed_word_count); // TODO check if all lines up
                 }
                 first_ch = '\0';
         } else {
@@ -221,10 +219,9 @@ int testView(std::vector<char>& typed, std::string& prompt, int prompt_length,
                     return 2; // ESC to quit // TODO adjust
                 }
                 else if (ch == '\b') { // backspace
-                    backspace_pressed(typed, ch, prompt, index, col, row, extras, prompt_length);
+                    backspace_pressed(typed, ch, prompt, index, col, row, extras);
                 } else { // normal key
-                    key_pressed(typed, ch, prompt, index, col, row, extras,
-                        prompt_length, typed_word_count); // TODO check if all lines up
+                    key_pressed(typed, ch, prompt, index, col, row, extras, typed_word_count); // TODO check if all lines up
                 }
             }
         }
@@ -346,23 +343,29 @@ int get_word_count(std::string prompt) {
 int main() {
     //std::cout << "\033[2J\033[H";
     // TODO: function to get random prompt
-    std::string prompt = "the quick brown fox jumps over the lazy dog\n"
-                         "the quick brown fox jumps over the lazy dog\n"
-                         "the quick brown fox jumps over the lazy dog\n";
-    std::string og_prompt = prompt;
-    std::string promptl1 = "the quick brown fox jumps over the lazy dog\n";
-    int prompt_length = promptl1.length();
+    std::vector<std::string> prompts = {
+        "the quick brown fox jumps over the lazy dog\n" // TODO. remove old prompt, add more capitalized/punctuated prompts (maybe 3 total)
+        "the quick brown fox jumps over the lazy dog\n"
+        "the quick brown fox jumps over the lazy dog\n",
+        "The quick brown fox jumps over the lazy dog.\n"
+        "The quick brown fox jumps over the lazy dog.\n"
+        "The quick brown fox jumps over the lazy dog.\n",
+        "Across between early still and matter turn;\n"
+        "clear place why leave forward, right under no\n"
+        "small part, before public note center, up beyond.\n"
+    };
+    std::string prompt = prompts.at(2);
     int prompt_word_count = get_word_count(prompt);
     int typed_word_count = 0;
     int menu = 0;
     char first_ch = '\0';
     double time_passed = 0;
 
-    std::vector<char> typed; // TODO DELETE?
+    std::vector<char> typed;
 
     while (true) {
-        if (menu == 0) menu = homeView(og_prompt, first_ch);
-        if (menu == 1) menu = testView(typed, prompt, prompt_length, first_ch, prompt_word_count, typed_word_count, time_passed);
+        if (menu == 0) menu = homeView(prompt, first_ch);
+        if (menu == 1) menu = testView(typed, prompt, first_ch, prompt_word_count, typed_word_count, time_passed);
         if (menu == 2) menu = resultsView(typed, prompt, prompt_word_count, typed_word_count, time_passed);
         if (menu == 3) menu = menuView();
         if (menu == 4) menu = aboutView();
