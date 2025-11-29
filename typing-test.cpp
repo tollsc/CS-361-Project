@@ -4,6 +4,7 @@
 #include <conio.h>
 #include <thread>
 #include <chrono>
+#include <iomanip>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 // #include <mutex> NOTE: Enable for timer
@@ -39,6 +40,40 @@ json getRequest(const std::string& url) {
         return json::parse(response);
     } catch (const std::exception& e) {
         std::cerr << "GET parse error: " << e.what() << "\n";
+        return json{};
+    }
+}
+
+// Helper for POST request
+json postRequest(const std::string& url, const std::string& body) {
+    CURL* curl = curl_easy_init();
+    std::string response;
+    if (curl) {
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        CURLcode res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            std::cerr << "POST request failed: " << curl_easy_strerror(res) << "\n";
+        }
+
+        curl_easy_cleanup(curl);
+        curl_slist_free_all(headers);
+    }
+
+    // std::cout << "Raw POST response: " << response << "\n";
+
+    try {
+        return json::parse(response);
+    } catch (const std::exception& e) {
+        std::cerr << "POST parse error: " << e.what() << "\n";
         return json{};
     }
 }
@@ -258,11 +293,10 @@ int resultsView(std::vector<char>& typed, std::string& prompt, int prompt_word_c
 
     std::cout << "\033[2J\033[H\n";
     std::cout << "\n\n\n\n\n\n\n\n";
-    std::cout << "\033[0m" << "[TEMP] time passed: " << "\033[38;5;202m" << time_passed << "\n"; // TODO delete
     std::cout << "\033[0m" << "wpm: " << "\033[38;5;202m" << wpm << "\n";
     std::cout << "\033[0m" << "acc: " << "\033[38;5;202m" << accuracy << "%\n";
     std::cout << "\033[0m" << "raw: " << "\033[38;5;202m" << raw << "\n";
-    std::cout << "\033[0m" << "test time: " << "\033[38;5;202m" << "_\n";
+    std::cout << "\033[0m" << "time: " << "\033[38;5;202m" << std::fixed << std::setprecision(1) << time_passed << "s\n";
     std::cout << "\033[0m" << "difficulty: " << "\033[38;5;202m" << "_\n\n\n";
     std::cout << "\033[0m" << "Press [tab] for next test\n"
                               "Press [enter] to retry test\n\n";
@@ -344,17 +378,34 @@ int main() {
     //std::cout << "\033[2J\033[H";
     // TODO: function to get random prompt
     std::vector<std::string> prompts = {
-        "the quick brown fox jumps over the lazy dog\n" // TODO. remove old prompt, add more capitalized/punctuated prompts (maybe 3 total)
-        "the quick brown fox jumps over the lazy dog\n"
-        "the quick brown fox jumps over the lazy dog\n",
         "The quick brown fox jumps over the lazy dog.\n"
         "The quick brown fox jumps over the lazy dog.\n"
         "The quick brown fox jumps over the lazy dog.\n",
         "Across between early still and matter turn;\n"
         "clear place why leave forward, right under no\n"
-        "small part, before public note center, up beyond.\n"
+        "small part, before public note center, up beyond.\n",
+        "Waves crash gently against the silent shore;\n"
+        "salt air drifts across the fading horizon,\n"
+        "and tides whisper secrets to the moon.\n"
     };
-    std::string prompt = prompts.at(2);
+    
+    // Pick a prompt
+    std::string raw_prompt = prompts.at(2);
+
+     // MS #8 implementation: minimal mode ------------------
+    json body;
+    body["text"] = raw_prompt;
+    std::string postBody = body.dump();
+    std::string minimalUrl = "http://localhost:3008/minimal";
+    json minimalResp = postRequest(minimalUrl, postBody);
+    std::string prompt;
+    if (minimalResp.contains("cleanedText")) {
+        prompt = minimalResp["cleanedText"];
+    } else {
+        prompt = raw_prompt; // fallback if service fails
+    }
+    // -------------------------------------------------------
+    
     int prompt_word_count = get_word_count(prompt);
     int typed_word_count = 0;
     int menu = 0;
