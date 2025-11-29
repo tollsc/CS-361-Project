@@ -112,15 +112,15 @@ int homeView(std::string prompt, char& first_ch) {
     std::cout << "\033[2J\033[H\n";
     std::cout << "Welcome to " << "\033[38;5;202m" << "chartype!\n\n\n";
     std::cout << "\033[0m" << "Press any key to start typing the prompt below:\n";
-    std::cout << "(Or press [q] to open the menu)\n\n\n\n";
+    std::cout << "(Or press [1] to open the menu)\n\n\n\n";
     std::cout << "\033[90m" << prompt;
     std::cout << "\033[10H\033[0m";
-    char home_ch;
+    char home_ch = '\0';
     while(true) {
         if (_kbhit()) {
             home_ch = _getch();
             first_ch = home_ch;
-            if (home_ch == 'q') return 3;
+            if (home_ch == '1') return 3;
             else return 1;
         }
     }
@@ -183,14 +183,14 @@ int resultsView() {
     std::cout << "\033[0m" << "test time: " << "\033[38;5;202m" << "30s\n";
     std::cout << "\033[0m" << "difficulty: " << "\033[38;5;202m" << "classic\n\n\n";
     std::cout << "\033[0m" << "Press [tab] for next test\n"
-                              "Press [q] to retry test\n\n";
-    char results_ch;
+                              "Press [enter] to retry test\n\n";
+    char results_ch = '\0';
     while(true) {
         if (_kbhit()) {
             results_ch = _getch();
         }
         if (results_ch == '\t') return 0;
-        if (results_ch == 'q') return 1;
+        if (results_ch == '\r') return 1;
     }
 }
 
@@ -198,7 +198,7 @@ int menuView() {
     std::cout << "\033[2J\033[H\n\n\n\n\n";
     std::cout << "Press [1] to close the menu\n\n";
     std::cout << "more\n";
-    std::cout << "[w] about\n\n";
+    std::cout << "[2] about\n\n";
     std::cout << "settings\n";
     std::cout << "Press [key] for setting --> type new value --> [enter] to apply changes\n";
     std::cout << "[3] time -- " << "30s : " << "\033[38;5;202m" << "15" << "\033[0m\n";
@@ -208,13 +208,13 @@ int menuView() {
     std::cout << "danger zone\n";
     std::cout << "[5] reset settings\n";
     // TODO: Implement reset settings screen/message
-    char menu_ch;
+    char menu_ch = '\0';
     while(true) {
         if (_kbhit()) {
             menu_ch = _getch();
         }
         if (menu_ch == '1') return 0;
-        if (menu_ch == 'w') return 4;
+        if (menu_ch == '2') return 4;
     }
 }
 
@@ -228,7 +228,7 @@ int aboutView() {
                  "\033[38;5;202mChartype\033[0m offers\n"
                  "real-time feedback per key pressed, results after each test, and\n"
                  "customization options for user preference.\n";
-    char about_ch;
+    char about_ch = '\0';
     while(true) {
         if (_kbhit()) {
             about_ch = _getch();
