@@ -106,6 +106,28 @@ int main() {
         } else if (sanitizeResp.contains("cleanedText")) {
             std::cout << "Sanitized text: " << sanitizeResp["cleanedText"] << "\n";
         }
+
+        // --- Test MS 5: time microservice (GET) ---
+        std::string time12Url = "http://localhost:3005/time/12-hour/Charlie";
+        json time12Resp = getRequest(time12Url);
+        if (time12Resp.contains("error")) {
+            std::cout << "Time 12-hour error: " << time12Resp["error"] << "\n";
+        } else {
+            std::cout << "12-hour time: " << time12Resp.value("time","?")
+                      << " | Message: " << time12Resp.value("message","?") << "\n";
+        }
+
+        // --- Test MS 6: date/time microservice (12-hour GET) ---
+        std::string ms6Url = "http://localhost:3006/date/12-hour";
+        json ms6Resp = getRequest(ms6Url);
+        if (ms6Resp.contains("error")) {
+            std::cout << "MS6 12-hour error: " << ms6Resp["error"] << "\n";
+        } else {
+            std::cout << "[MS6] IP: " << ms6Resp.value("ip","?")
+                      << " | Date: " << ms6Resp.value("date","?")
+                      << " | Time (12-hour): " << ms6Resp.value("time","?") << "\n";
+        }
+
     } catch (const std::exception& e) {
         std::cerr << "Unhandled exception: " << e.what() << "\n";
     }

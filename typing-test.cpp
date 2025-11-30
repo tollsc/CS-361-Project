@@ -312,7 +312,19 @@ int resultsView(std::vector<char>& typed, std::string& prompt, int prompt_word_c
 }
 
 int menuView() {
-    std::cout << "\033[2J\033[H\n\n\n\n\n";
+    std::cout << "\033[2J\033[H\n\n";
+    // --- MS 5: time message microservice----------------------------
+    std::string ms5Url = "http://localhost:3005/time/12-hour/Charlie";
+    json ms5Resp = getRequest(ms5Url);
+
+    if (ms5Resp.contains("error")) {
+        std::cout << "[MS5] Error: " << ms5Resp["error"] << "\n";
+    } else {
+        std::cout << ms5Resp.value("time","?") << std::endl;
+        std::cout << ms5Resp.value("message","?");
+    }
+    // ---------------------------------------------------------------
+    std::cout << "\n\n";
     std::cout << "Press [1] to close the menu\n\n";
     std::cout << "more\n";
     std::cout << "[2] about\n\n";
@@ -324,6 +336,7 @@ int menuView() {
                  "\tincorrect word. e: expert, fails test if you press an incorrect key)\n\n";
     std::cout << "danger zone\n";
     std::cout << "[5] reset settings\n";
+
     // TODO: Implement reset settings screen/message
     char menu_ch = '\0';
     while(true) {
@@ -344,7 +357,21 @@ int aboutView() {
                  "minimalist typing experience with simplicity and flow. "
                  "\033[38;5;202mChartype\033[0m offers\n"
                  "real-time feedback per key pressed, results after each test, and\n"
-                 "customization options for user preference.\n";
+                 "customization options for user preference.\n\n\n";
+
+    // --- MS 6: date/time/IP microservice--------------------------
+    std::string ms6Url = "http://localhost:3006/date/12-hour";
+    json ms6Resp = getRequest(ms6Url);
+    if (ms6Resp.contains("error")) {
+        std::cout << "[MS6] Error: " << ms6Resp["error"] << "\n";
+    } else {
+        std::cout << "user info\n"
+                  << "date : " << ms6Resp.value("date","?") << "\n"
+                  << "IP : " << ms6Resp.value("ip","?");
+        }
+        std::cout << "\n";
+    // -------------------------------------------------------------
+
     char about_ch = '\0';
     while(true) {
         if (_kbhit()) {
